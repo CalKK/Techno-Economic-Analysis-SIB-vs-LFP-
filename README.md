@@ -15,6 +15,7 @@
 
 ## 📋 Table of Contents
 
+- [Project Objectives](#project-objectives)
 - [Overview](#overview)
 - [Features](#features)
 - [Architecture](#architecture)
@@ -23,6 +24,7 @@
 - [Usage](#usage)
 - [Configuration](#configuration)
 - [API Reference](#api-reference)
+- [Feasibility Report](#feasibility-report)
 - [Project Structure](#project-structure)
 - [Contributing](#contributing)
 - [Troubleshooting](#troubleshooting)
@@ -30,23 +32,37 @@
 
 ---
 
+## Project Objectives
+
+1. **Develop a Digital Twin for E-Bike Fleet Operations** — Build a Monte Carlo simulation engine that models 100 electric motorcycles operating on a real Nairobi route, incorporating physics-based energy consumption and electrochemical battery degradation.
+
+2. **Compare SIB vs LFP Battery Chemistry Techno-Economics** — Evaluate Sodium-Ion (SIB) and Lithium Iron Phosphate (LFP) batteries across cost, degradation, energy efficiency, and capacity fade to determine which chemistry is more viable for commercial e-bike fleets.
+
+3. **Assess Owned (Depot) vs BaaS (Swapping) Business Models** — Quantify the Total Cost of Ownership per kilometre for battery ownership with KPLC grid charging versus Battery-as-a-Service with pay-per-swap, identifying crossover points.
+
+4. **Deliver an Interactive Decision-Support Tool** — Create a Streamlit application with separated ETL and simulation stages, configurable parameters, downloadable data, and an automated feasibility report with mathematical derivations.
+
+---
+
 ## Overview
 
-A **Monte Carlo fleet simulation** tool that models 100 electric motorcycle (e-bike) riders over a 120-day feasibility window in Nairobi, Kenya. The tool enables fleet operators to compare the **Total Cost of Ownership (TCO)** across four business models spanning two battery chemistries:
+A **Monte Carlo fleet simulation** tool that models **100 electric motorcycle (e-bike) riders** (25 per model × 4 models) over a configurable feasibility window (40 / 80 / 120 days) in Nairobi, Kenya. The tool enables fleet operators to compare the **Total Cost of Ownership (TCO)** across four business models spanning two battery chemistries:
 
-| Model | Chemistry | Ownership | OPEX Driver |
-|-------|-----------|-----------|-------------|
-| **SIB Owned** | Sodium-Ion Battery | Fleet purchases battery | KPLC grid tariff (KSh/kWh) |
-| **LFP Owned** | Lithium Iron Phosphate | Fleet purchases battery | KPLC grid tariff (KSh/kWh) |
-| **SIB BaaS** | Sodium-Ion Battery | Operator-owned (swap) | Per-swap fee (KSh) |
-| **LFP BaaS** | Lithium Iron Phosphate | Operator-owned (swap) | Per-swap fee (KSh) |
+| Model | Chemistry | Ownership | Bikes | OPEX Driver |
+|-------|-----------|-----------|-------|-------------|
+| **SIB Owned** | Sodium-Ion Battery | Fleet purchases battery | 25 | KPLC grid tariff (KSh/kWh) |
+| **LFP Owned** | Lithium Iron Phosphate | Fleet purchases battery | 25 | KPLC grid tariff (KSh/kWh) |
+| **SIB BaaS** | Sodium-Ion Battery | Operator-owned (swap) | 25 | Per-swap fee (KSh) |
+| **LFP BaaS** | Lithium Iron Phosphate | Operator-owned (swap) | 25 | Per-swap fee (KSh) |
 
 ### Key Engineering Models
 
 - **Pre-computed Algebraic Energy Decomposition** — Route energy is decomposed into `E(r_dyn) = A + B·r_dyn + C`, enabling ~1000x faster simulation by replacing per-trip array operations with scalar arithmetic.
-- **Arrhenius Thermal Stress** — Battery degradation rate scales with ambient temperature using the heuristic that degradation doubles every 10°C above 25°C baseline.
-- **Subspace System Identification (SSI)** — Dynamic internal resistance (`R₀`) increases as State of Health (SOH) degrades, modelled as `r_dyn = R₀ × (1 + 2.5 × (1 - SOH))`.
-- **Stochastic Range Anxiety** — BaaS riders swap batteries at randomised SOC thresholds, simulating real-world behavioural uncertainty.
+- **Power-Law SOH Degradation** — `SOH_loss = k × EFC^p` where `k` is extracted from BMS data and `p` = 0.55 (SIB) / 0.50 (LFP).
+- **Arrhenius Thermal Stress** — Battery degradation rate scales with ambient temperature: `k_thermal = k_base × 2^((T - 25) / 10)`.
+- **Subspace System Identification (SSI)** — Dynamic internal resistance increases as SOH degrades: `r_dyn = R₀ × (1 + 2.5 × (1 - SOH))`.
+- **CAPEX Amortization (Capped)** — `CAPEX_amortized = min(CAPEX_initial, CAPEX_initial × (1 - SOH) / 0.20)` — capped at the battery's purchase price (100% consumed at 80% SOH End-of-Life).
+- **Stochastic Range Anxiety** — BaaS riders swap batteries at randomised SOC thresholds `θ ~ Uniform(min%, max%)`, simulating real-world behavioural uncertainty across the 25-bike fleet.
 
 ---
 
@@ -58,7 +74,11 @@ A **Monte Carlo fleet simulation** tool that models 100 electric motorcycle (e-b
 - 🌡️ **Arrhenius thermal modelling** for temperature-dependent degradation
 - 📈 **5 interactive Plotly charts**: Route topography, SOH fade, energy efficiency, capacity fade, cumulative TCO
 - 📥 **Two-phase workflow**: ETL extraction → Simulation (cached, re-runnable with different parameters)
+- 📥 **Downloadable ETL data**: Cleaned driving cycles, BMS data, and route profile as CSV
 - 🎛️ **Adjustable simulation duration**: 40, 80, or 120 days for progressive observability
+- 📋 **Automated feasibility report** with head-to-head comparison table, 5 recommendation sections, and mathematical derivation expanders
+- 💰 **Fleet total spend** calculations with per-bike averages and grand total across all 100 bikes
+- 📊 **Variance methodology** explaining Bike 0 vs fleet average differences (IEEE 754 precision, stochastic anxiety)
 
 ---
 
@@ -67,7 +87,8 @@ A **Monte Carlo fleet simulation** tool that models 100 electric motorcycle (e-b
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    app.py (UI Layer)                 │
-│  Streamlit sidebar controls, charts, metrics        │
+│  Sidebar controls, charts, metrics, download        │
+│  buttons, feasibility report, math derivations      │
 ├─────────────────────────────────────────────────────┤
 │                 workflow.py (Logic Engine)           │
 │  ┌──────────┐ ┌──────────────┐ ┌──────────────────┐ │
@@ -165,6 +186,7 @@ Standard GPX 1.1 format with `<trkpt>` elements containing latitude, longitude, 
 1. Upload all three data files in the sidebar.
 2. Click **📥 Perform ETL** to extract electrochemical parameters.
 3. Review the extracted metrics (mean daily distance, degradation coefficient `k`, scaled resistance `R₀`).
+4. **Download cleaned data**: Click the download buttons for cleaned driving cycles, BMS data, and route profile CSVs.
 
 ### Step 2: Configure & Simulate
 
@@ -178,6 +200,7 @@ Standard GPX 1.1 format with `<trkpt>` elements containing latitude, longitude, 
 - **Executive verdict**: Identifies the most cost-effective business model (KSh/km).
 - **TCO metrics**: Per-km cost for all 4 models.
 - **Charts**: SOH degradation, energy efficiency, capacity fade, cumulative cost trends.
+- **Feasibility report**: Head-to-head comparison, 5 recommendation sections, fleet total spend, and mathematical derivation expanders.
 
 ---
 
@@ -200,7 +223,7 @@ Standard GPX 1.1 format with `<trkpt>` elements containing latitude, longitude, 
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `TARGET_CAP_KWH` | 1.44 kWh | Target battery capacity (48V × 30Ah) |
-| `FLEET_SIZE` | 100 | Number of e-bikes per business model |
+| `FLEET_SIZE` | 25 | Number of e-bikes per business model (25 × 4 = 100 total) |
 
 ### Theme Configuration (`.streamlit/config.toml`)
 
@@ -208,9 +231,9 @@ Standard GPX 1.1 format with `<trkpt>` elements containing latitude, longitude, 
 [theme]
 base = "dark"
 primaryColor = "#FF4B4B"
-backgroundColor = "#0E1117"
+backgroundColor = "#ffffffff"
 secondaryBackgroundColor = "#262730"
-textColor = "#FAFAFA"
+textColor = "#020202ff"
 ```
 
 ---
@@ -224,7 +247,8 @@ textColor = "#FAFAFA"
 Extracts electrochemical parameters from raw datasets.
 
 - **Parameters:** Streamlit `UploadedFile` objects for driving cycles and BMS data.
-- **Returns:** `(mean_km, std_km, k_degradation, r0_scaled)`
+- **Returns:** `(mean_km, std_km, k_degradation, r0_scaled, df_daily_clean, df_bms_clean)`
+- The two DataFrames are cleaned intermediate data available for download.
 
 #### `apply_arrhenius_thermal_stress(k_base, current_temp, baseline_temp=25.0)`
 
@@ -253,14 +277,53 @@ Computes trip energy from pre-computed coefficients in a single scalar operation
 
 #### `run_fleet_simulation(...)`
 
-Main simulation entry point. Runs all 4 fleet models over the specified duration.
+Main simulation entry point. Runs all 4 fleet models (25 bikes each) over the specified duration.
 
 - **Key Parameters:** `env_temp` (°C), `sim_days` (40/80/120), `progress_callback` (callable).
 - **Returns:** `(fleets_dict, results_dict, best_model_name)`
 
 ### `FleetBike` — Digital Twin Class
 
-Each instance tracks: `soh`, `soc`, `cum_efc`, `total_km`, `opex`, `capex_amortized`, and daily telemetry logs for charting.
+Each instance tracks: `soh`, `soc`, `cum_efc`, `total_km`, `opex`, `capex_amortized`, and daily telemetry logs for charting. Key attributes:
+
+| Attribute | Description |
+|-----------|-------------|
+| `energy_A`, `energy_B`, `energy_C` | Pre-computed route energy coefficients |
+| `r0_base` | Baseline internal resistance (Ω) |
+| `k_coeff` | Thermally-adjusted degradation coefficient |
+| `p_factor` | Power-law exponent (SIB: 0.55, LFP: 0.50) |
+| `initial_capex` | Battery purchase price (KSh) |
+| `log_soh`, `log_wh_km`, `log_cap`, `log_cum_tco` | Daily telemetry arrays |
+
+---
+
+## Feasibility Report
+
+After simulation, the app generates an automated **📋 Feasibility Report** containing:
+
+### ⚖️ Head-to-Head Comparison Table
+
+SIB vs LFP across 6 metrics (TCO owned, TCO BaaS, SOH, SOH loss, Wh/km, remaining Ah) with a ✅ winner column.
+
+### 📝 Recommendations (5 sections)
+
+1. **Cost Efficiency (TCO/km)** — Winner per business model with savings per km.
+2. **Battery Longevity (SOH Degradation)** — Includes expandable derivation:
+   - 8 calculation steps from route physics → P_mech → coefficients (A, B, C) → E_trip → EFC → Arrhenius k → power-law SOH
+3. **Energy Efficiency (Wh/km)** — Includes expandable derivation:
+   - Dynamic resistance → E_trip at end → Wh/km with Day 0 vs Day N comparison
+4. **Capacity Fade (Ah)** — Includes expandable derivation:
+   - C_remaining = 30 Ah × SOH with worked examples
+5. **Cumulative TCO Accumulation** — Fleet-average per-bike costs + fleet total spend table:
+   - Per-bike averages (fleet total ÷ 25) with daily burn rates
+   - Total fleet spend table (all 25 bikes per model + grand total for 100 bikes)
+   - Crossover point detection (where Owned overtakes BaaS)
+   - Expandable mathematical derivation (OPEX, CAPEX, worked examples)
+   - Expandable variance methodology (IEEE 754 precision, stochastic anxiety, min/max spread)
+
+### 🏆 Overall Verdict
+
+Best chemistry for Owned, best for BaaS, and overall most cost-effective path.
 
 ---
 
@@ -268,11 +331,11 @@ Each instance tracks: `soh`, `soc`, `cum_efc`, `total_km`, `opex`, `capex_amorti
 
 ```
 TECHNO ECONOMIC ANALYSIS/
-├── app.py                  # Streamlit UI layer
-├── workflow.py             # Core simulation engine
+├── app.py                  # Streamlit UI layer (dashboard, charts, feasibility report)
+├── workflow.py             # Core simulation engine (ETL, physics, digital twin)
 ├── README.md               # This file
 └── .streamlit/
-    └── config.toml         # Dark theme configuration
+    └── config.toml         # Theme configuration
 ```
 
 ---
@@ -330,7 +393,7 @@ python -m streamlit run app.py
 ### Simulation runs slowly
 
 - Start with **40 days** instead of 120 for quick trend observation.
-- The pre-computed energy coefficients should make 100-bike simulations run in seconds. If still slow, check that `workflow.py` uses `fast_trip_energy()` rather than the full array `calculate_trip_energy()`.
+- The pre-computed energy coefficients should make 25-bike simulations run in under a second.
 
 ### GPX parsing errors
 
@@ -341,6 +404,10 @@ python -m streamlit run app.py
 
 - Verify your BMS data contains records for battery IDs `B5`, `B6`, `B7` with `cycle > 0`.
 - Verify your driving cycle data contains records for user IDs `579236`, `629227`, `629740`.
+
+### CAPEX Amortized exceeds initial cost
+
+- This was fixed: CAPEX amortization is now **capped at the initial battery price**. If you see values exceeding initial CAPEX, update to the latest `workflow.py`.
 
 ---
 
