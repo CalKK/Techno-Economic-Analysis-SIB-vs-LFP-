@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ BEE 5201: Fleet Simulation & Techno-Economic Analysis
+# Feasibility of Deployment of Sodium-Ion Battery Packs for Urban Transport in Nairobi: A fleet simulation and Techno-Economic Analysis
 
 **E-Bike TCO Digital Twin — Comparing Battery Chemistry Ownership vs. Battery-as-a-Service**
 
