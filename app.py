@@ -10,7 +10,7 @@ from workflow import (
 # ==========================================
 st.set_page_config(page_title="BEE 5201: Fleet Simulation", layout="wide", initial_sidebar_state="expanded")
 
-st.title("⚡ BEE 5201: A Fleet Simulation and Techno-Economic Analysis")
+st.title("⚡A Fleet Simulation and Techno-Economic Analysis")
 st.markdown("E-BIKE TCO Digital Twin")
 
 # ==========================================
