@@ -2,7 +2,7 @@
 
 # Feasibility of Deployment of Sodium-Ion Battery Packs for Urban Transport in Nairobi: A fleet simulation and Techno-Economic Analysis
 
-**E-Bike TCO Digital Twin — Comparing Battery Chemistry Ownership vs. Battery-as-a-Service**
+**E-Bike TCO Digital Twin - Comparing Battery Chemistry Ownership vs. Battery-as-a-Service**
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B?logo=streamlit&logoColor=white)
